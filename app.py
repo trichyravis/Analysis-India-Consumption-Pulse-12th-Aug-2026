@@ -72,12 +72,13 @@ def load_data():
         "confidence": parse("confidence.csv"),
         "gst": parse("gst.csv"),
         "vehicles": parse("passenger_vehicles.csv"),
+        "rates": parse("policy_rates.csv"),
         "catalog": pd.read_csv(DATA / "source_catalog.csv", parse_dates=["latest_period"]),
     }
 
 
 d = load_data()
-COLORS = {"Inflation": "#EF6A4C", "Confidence": "#2D756C", "GST": "#C49A45", "Vehicles": "#657B9A"}
+COLORS = {"Inflation": "#EF6A4C", "Confidence": "#2D756C", "GST": "#C49A45", "Vehicles": "#657B9A", "Repo rate": "#7B61A8"}
 
 
 def mom_delta(frame, column):
@@ -129,6 +130,7 @@ infl = d["inflation"].query("date >= @start_ts")
 conf = d["confidence"].query("date >= @start_ts")
 gst = d["gst"].query("date >= @start_ts")
 veh = d["vehicles"].query("date >= @start_ts")
+rates = d["rates"].query("date >= @start_ts")
 
 st.markdown(
     """<div class="academy-banner"><div class="academy-mark">▲</div><div><div class="academy-name">The Mountain Path Academy</div><div class="academy-tagline">Finance · Risk Management · Quantitative Analytics</div></div></div>""",
@@ -136,21 +138,22 @@ st.markdown(
 )
 st.markdown('<div class="eyebrow">India · household demand monitor</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero">Consumption, beneath the headline.</div>', unsafe_allow_html=True)
-st.markdown('<div class="subhero">Four signals—prices, sentiment, tax receipts and automobile demand—read together, with their publication gaps kept visible.</div>', unsafe_allow_html=True)
+st.markdown('<div class="subhero">Five signals—prices, sentiment, tax receipts, automobile demand and monetary policy—read together, with their publication gaps kept visible.</div>', unsafe_allow_html=True)
 st.markdown('<span class="pill">Official-source snapshot</span><span class="pill">Monthly + bi-monthly</span><span class="pill">Latest available ≠ July 2026</span>', unsafe_allow_html=True)
 
 if page == "Pulse":
-    latest_i, latest_c, latest_g, latest_v = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1]
-    c1, c2, c3, c4 = st.columns(4)
+    latest_i, latest_c, latest_g, latest_v, latest_r = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1], d["rates"].iloc[-1]
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Headline inflation", f"{latest_i.cpi_inflation_yoy:.2f}%", f"{mom_delta(infl, 'cpi_inflation_yoy'):+.2f} pp", help="All-India Combined CPI, year on year")
     c2.metric("Urban confidence", f"{latest_c.csi:.1f}", f"{mom_delta(conf, 'csi'):+.1f} pts", help="CSI; below 100 denotes pessimism")
     c3.metric("Gross GST", f"₹{latest_g.gross_gst_crore/100000:.2f}L cr", f"{mom_delta(gst, 'gross_gst_crore')/1000:+.1f}k cr")
     c4.metric("Passenger vehicles", f"{latest_v.domestic_sales_units/100000:.2f}L", f"{mom_delta(veh, 'domestic_sales_units')/1000:+.1f}k", help="SIAM domestic wholesale dispatches")
+    c5.metric("Policy repo rate", f"{latest_r.repo_rate:.2f}%", f"{latest_r.repo_rate-d['rates'].iloc[0].repo_rate:+.2f} pp since Jan 2024", help="RBI policy repo rate")
 
     st.markdown('<div class="section-title">Different clocks, one demand story</div>', unsafe_allow_html=True)
     st.caption("Each series rebased to 100 at its first available observation in the selected window. This compares direction, not units.")
     indexed = []
-    specs = [(infl, "cpi_inflation_yoy", "Inflation"), (conf, "csi", "Confidence"), (gst, "gross_gst_crore", "GST"), (veh, "domestic_sales_units", "Vehicles")]
+    specs = [(infl, "cpi_inflation_yoy", "Inflation"), (conf, "csi", "Confidence"), (gst, "gross_gst_crore", "GST"), (veh, "domestic_sales_units", "Vehicles"), (rates, "repo_rate", "Repo rate")]
     for frame, col, label in specs:
         temp = frame[["date", col]].dropna().copy()
         temp["value"] = temp[col] / temp[col].iloc[0] * 100
@@ -168,7 +171,7 @@ if page == "Pulse":
         st.markdown('<div class="callout"><b>Read with care.</b> GST and vehicle sales are nominal/activity measures and are seasonal. Consumer confidence is bi-monthly. Indexed lines are descriptive; they do not establish causality.</div>', unsafe_allow_html=True)
 
 elif page == "Deep dive":
-    topic = st.radio("Indicator", ["Inflation", "Confidence", "GST", "Vehicles"], horizontal=True)
+    topic = st.radio("Indicator", ["Inflation", "Confidence", "GST", "Vehicles", "Policy rates"], horizontal=True)
     if topic == "Inflation":
         melted = infl.melt("date", ["cpi_inflation_yoy", "food_inflation_yoy"], var_name="series", value_name="percent")
         melted["series"] = melted.series.map({"cpi_inflation_yoy": "Headline CPI", "food_inflation_yoy": "Food CPI"})
@@ -184,17 +187,27 @@ elif page == "Deep dive":
     elif topic == "GST":
         st.altair_chart(line_chart(gst, "date", "gross_gst_crore", "#C49A45"), use_container_width=True)
         st.caption("Gross GST revenue, ₹ crore. The April spike is influenced by financial-year-end settlement and compliance seasonality.")
-    else:
+    elif topic == "Vehicles":
         st.altair_chart(line_chart(veh, "date", "domestic_sales_units", "#657B9A"), use_container_width=True)
         st.caption("Domestic wholesale dispatches. This is not VAHAN retail registration data; festive stocking can shift timing.")
+    else:
+        policy_long = rates.melt("date", ["repo_rate", "fixed_reverse_repo_rate", "sdf_rate"], var_name="series", value_name="percent")
+        policy_long["series"] = policy_long.series.map({"repo_rate":"Policy repo", "fixed_reverse_repo_rate":"Fixed reverse repo", "sdf_rate":"Standing Deposit Facility"})
+        policy_chart = alt.Chart(policy_long).mark_line(interpolate="step-after", point=True, strokeWidth=2.6).encode(
+            x=alt.X("date:T", title=None, axis=alt.Axis(format="%b %Y", labelAngle=0)), y=alt.Y("percent:Q", title="Rate, %", scale=alt.Scale(zero=False)),
+            color=alt.Color("series:N", scale=alt.Scale(range=["#7B61A8", "#EF6A4C", "#2D756C"]), title=None),
+            tooltip=[alt.Tooltip("date:T", format="%b %Y"), "series:N", alt.Tooltip("percent:Q", format=".2f")]
+        ).properties(height=420)
+        st.altair_chart(policy_chart, use_container_width=True)
+        st.info("Since April 2022, the Standing Deposit Facility (SDF)—not the unchanged 3.35% fixed reverse repo—has been the effective floor of RBI's liquidity corridor.")
 
 elif page == "Relationships":
     st.markdown('<div class="section-title">Aligned monthly signals</div>', unsafe_allow_html=True)
     st.caption("Bi-monthly confidence is forward-filled for one month only. Values are standardized before correlation.")
-    merged = infl[["date", "cpi_inflation_yoy"]].merge(gst[["date", "gross_gst_crore"]], on="date", how="outer").merge(veh[["date", "domestic_sales_units"]], on="date", how="outer").merge(conf[["date", "csi"]], on="date", how="outer").sort_values("date")
+    merged = infl[["date", "cpi_inflation_yoy"]].merge(gst[["date", "gross_gst_crore"]], on="date", how="outer").merge(veh[["date", "domestic_sales_units"]], on="date", how="outer").merge(conf[["date", "csi"]], on="date", how="outer").merge(rates[["date", "repo_rate"]], on="date", how="outer").sort_values("date")
     merged["csi"] = merged.csi.ffill(limit=1)
     merged = merged.query("date >= @start_ts")
-    labels = {"cpi_inflation_yoy":"Inflation", "csi":"Confidence", "gross_gst_crore":"GST", "domestic_sales_units":"Vehicles"}
+    labels = {"cpi_inflation_yoy":"Inflation", "csi":"Confidence", "gross_gst_crore":"GST", "domestic_sales_units":"Vehicles", "repo_rate":"Repo rate"}
     corr = merged[list(labels)].corr(min_periods=6).rename(index=labels, columns=labels).round(2)
     corr_long = corr.stack().rename("correlation").reset_index()
     heat = alt.Chart(corr_long).mark_rect(cornerRadius=4).encode(x=alt.X("level_1:N", title=None), y=alt.Y("level_0:N", title=None), color=alt.Color("correlation:Q", scale=alt.Scale(domain=[-1,0,1], range=["#C8583E", "#F4EEE5", "#2D756C"]), title="r"), tooltip=["level_0", "level_1", "correlation"]).properties(height=370)
@@ -214,12 +227,13 @@ elif page == "Data desk":
             st.write(row.caveat)
             st.link_button("Open official source", row.source_url)
     st.markdown("#### Download clean snapshots")
-    cols = st.columns(4)
+    cols = st.columns(5)
     exports = [
         ("india_inflation.xlsx", "Inflation"),
         ("india_consumer_confidence.xlsx", "Confidence"),
         ("india_gst_collections.xlsx", "GST"),
         ("india_passenger_vehicle_sales.xlsx", "Vehicles"),
+        ("india_policy_rates.xlsx", "Policy rates"),
     ]
     for col, (file_name, label) in zip(cols, exports):
         workbook_bytes = (DATA / "excel" / file_name).read_bytes()
@@ -230,12 +244,12 @@ elif page == "Data desk":
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
         )
-    st.markdown('<div class="callout warn"><b>July 2026 is not backfilled.</b> As of the snapshot date, no series in this project had a complete, clean official July observation available for inclusion. The dashboard stops each indicator at its latest sourced period.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="callout warn"><b>Different freshness dates.</b> RBI policy rates are available through July 2026, while CPI/GST stop at June, vehicles at May and confidence at March. The dashboard does not fabricate missing observations to force a common endpoint.</div>', unsafe_allow_html=True)
 
 else:
     st.markdown('<div class="section-title">About this project</div>', unsafe_allow_html=True)
     st.write(
-        "India Consumption Pulse is an educational macro-demand dashboard. It brings together four public indicators "
+        "India Consumption Pulse is an educational macro-demand dashboard. It brings together five public indicators "
         "that describe different parts of the household-consumption cycle: the prices consumers face, how households "
         "feel, tax receipts associated with formal economic activity, and demand for a major discretionary purchase."
     )
@@ -264,9 +278,16 @@ else:
             </ul></div>""",
             unsafe_allow_html=True,
         )
+    st.markdown(
+        """<div class="insight-card"><h4>Monetary policy and borrowing conditions</h4><ul>
+        <li><b>Repo rate</b> is the policy rate at which RBI lends to banks and influences borrowing costs across the economy.</li>
+        <li><b>Fixed reverse repo</b> remains published at 3.35%, but it is no longer the operative corridor floor.</li>
+        <li><b>SDF</b> is the relevant liquidity-absorption floor since April 2022 and should be read alongside repo.</li>
+        </ul></div>""", unsafe_allow_html=True,
+    )
 
     st.markdown("#### Comparative analysis — what the latest signals mean")
-    latest_i, latest_c, latest_g, latest_v = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1]
+    latest_i, latest_c, latest_g, latest_v, latest_r = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1], d["rates"].iloc[-1]
     vehicle_yoy = (latest_v.domestic_sales_units / d["vehicles"].loc[d["vehicles"].date == latest_v.date - pd.DateOffset(years=1), "domestic_sales_units"].iloc[0] - 1) * 100
     st.caption("Comparable direction, not comparable units: each line below starts at 100 in July 2024.")
     visual_parts = []
@@ -275,6 +296,7 @@ else:
         (d["confidence"], "csi", "Confidence"),
         (d["gst"], "gross_gst_crore", "GST"),
         (d["vehicles"], "domestic_sales_units", "Vehicles"),
+        (d["rates"], "repo_rate", "Repo rate"),
     ]:
         temp = frame.loc[frame.date >= pd.Timestamp("2024-07-01"), ["date", col]].dropna().copy()
         temp["Indexed value"] = temp[col] / temp[col].iloc[0] * 100
@@ -310,6 +332,14 @@ else:
         tooltip=[alt.Tooltip("date:T", format="%b %Y"), "Measure:N", alt.Tooltip("Percent:Q", format=".2f")],
     ).properties(title="Inflation: headline vs food", height=245)
     right_chart.altair_chart(price_chart.configure_view(strokeWidth=0), use_container_width=True)
+    rate_long = d["rates"].melt("date", ["repo_rate", "fixed_reverse_repo_rate", "sdf_rate"], var_name="Measure", value_name="Percent")
+    rate_long["Measure"] = rate_long.Measure.map({"repo_rate":"Policy repo", "fixed_reverse_repo_rate":"Fixed reverse repo", "sdf_rate":"SDF"})
+    rate_chart = alt.Chart(rate_long).mark_line(interpolate="step-after", point=True, strokeWidth=2.5).encode(
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%b %y", labelAngle=0)), y=alt.Y("Percent:Q", title="Rate, %", scale=alt.Scale(zero=False)),
+        color=alt.Color("Measure:N", scale=alt.Scale(range=["#7B61A8", "#EF6A4C", "#2D756C"]), title=None),
+        tooltip=[alt.Tooltip("date:T", format="%b %Y"), "Measure:N", alt.Tooltip("Percent:Q", format=".2f")]
+    ).properties(title="RBI policy-rate corridor", height=270)
+    st.altair_chart(rate_chart.configure_view(strokeWidth=0), use_container_width=True)
     st.markdown(
         f"""
         - **Inflation has re-accelerated:** headline CPI rose to **{latest_i.cpi_inflation_yoy:.2f}% in {latest_i.date:%B %Y}**, with food inflation at **{latest_i.food_inflation_yoy:.2f}%**. This suggests renewed pressure on household budgets, especially for lower-income consumers.
@@ -321,6 +351,10 @@ else:
         - **Formal activity remains large:** gross GST was **₹{latest_g.gross_gst_crore/100000:.2f} lakh crore in {latest_g.date:%B %Y}**. Read this as a broad nominal activity signal—not a pure measure of real household consumption—because inflation, imports, compliance and timing also affect collections.
 
         - **Vehicle demand is comparatively strong:** passenger-vehicle wholesale sales reached **{latest_v.domestic_sales_units/100000:.2f} lakh units in {latest_v.date:%B %Y}**, approximately **{vehicle_yoy:.1f}% higher** than the same month a year earlier. This points to resilience in a financing-sensitive discretionary category.
+
+        - **Monetary policy is more supportive than in early 2025:** the repo rate is **{latest_r.repo_rate:.2f}%**, down **{d['rates'].iloc[0].repo_rate-latest_r.repo_rate:.2f} percentage points** from January 2024. Lower policy rates can support credit-sensitive consumption with a lag, though actual loan-rate transmission varies.
+
+        - **Reverse repo needs context:** the fixed reverse repo remains **{latest_r.fixed_reverse_repo_rate:.2f}%**, while the operative SDF floor is **{latest_r.sdf_rate:.2f}%**. For current liquidity conditions, SDF is the economically relevant comparison.
 
         - **Combined inference:** the indicators describe an **uneven but resilient consumption environment**. Current household sentiment is subdued and food-price pressure has returned, yet forward expectations and passenger-vehicle demand are stronger than the confidence reading alone would imply.
 
@@ -334,6 +368,7 @@ else:
         - Compare direction and turning points rather than expecting all series to move in the same month.
         - Check each series' latest period before comparing readings; release schedules differ.
         - Treat GST and vehicle sales for seasonality, festival timing, year-end effects and policy changes.
+        - Allow for transmission lags: a repo-rate cut does not immediately or uniformly reduce every household borrowing rate.
         - Use correlations as exploratory evidence only. A short shared trend does not establish causation.
         - Supplement this dashboard with rural confidence, retail registrations, real consumption expenditure and income data before making investment or policy decisions.
         """
