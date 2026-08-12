@@ -103,7 +103,7 @@ def line_chart(frame, x, y, color="#2D756C", height=310, domain=None, rule=None)
 with st.sidebar:
     st.markdown("### India Consumption Pulse")
     st.caption("A compact macro demand monitor")
-    page = st.radio("Navigate", ["About & insights", "Pulse", "Deep dive", "Relationships", "Data desk"], label_visibility="collapsed")
+    page = st.radio("Navigate", ["About & insights", "Concepts & checks", "Pulse", "Deep dive", "Relationships", "Data desk"], label_visibility="collapsed")
     st.markdown("---")
     start = st.date_input("Start period", pd.Timestamp("2024-07-01"), min_value=pd.Timestamp("2024-01-01"), max_value=pd.Timestamp("2026-07-31"))
     show_notes = st.toggle("Show methodology notes", value=True)
@@ -141,7 +141,86 @@ st.markdown('<div class="hero">Consumption, beneath the headline.</div>', unsafe
 st.markdown('<div class="subhero">Five signals—prices, sentiment, tax receipts, automobile demand and monetary policy—read together, with their publication gaps kept visible.</div>', unsafe_allow_html=True)
 st.markdown('<span class="pill">Official-source snapshot</span><span class="pill">Monthly + bi-monthly</span><span class="pill">Latest available ≠ July 2026</span>', unsafe_allow_html=True)
 
-if page == "Pulse":
+if page == "Concepts & checks":
+    st.markdown('<div class="section-title">Concepts & knowledge checks</div>', unsafe_allow_html=True)
+    st.write("A short learning studio for understanding the indicators before interpreting their movements.")
+
+    concept_tab, reading_tab, check_tab = st.tabs(["Core concepts", "Reading signals", "Knowledge checks"])
+    with concept_tab:
+        st.markdown("#### The five building blocks")
+        cards = [
+            ("CPI inflation", "The percentage change in the consumer-price index from a year earlier. Falling inflation means prices are rising more slowly—not necessarily falling."),
+            ("Consumer confidence", "CSI describes how urban households view current conditions; FEI captures expectations one year ahead. A value of 100 is neutral."),
+            ("GST collections", "A nominal, high-frequency signal of formal taxable activity. Inflation, imports, compliance and calendar effects also influence it."),
+            ("Passenger vehicles", "A financing-sensitive discretionary-demand indicator. SIAM reports wholesale dispatches, which can differ from retail registrations."),
+            ("RBI policy rates", "Repo influences borrowing conditions. SDF absorbs banks' surplus liquidity and forms the operative floor; fixed reverse repo remains published but is not the current floor."),
+        ]
+        for row in range(0, len(cards), 2):
+            cols = st.columns(2)
+            for col, (title, body) in zip(cols, cards[row:row+2]):
+                col.markdown(f'<div class="insight-card"><h4>{title}</h4><p>{body}</p></div>', unsafe_allow_html=True)
+
+        st.markdown("#### RBI policy-rate corridor")
+        corridor = pd.DataFrame({
+            "Facility": ["Fixed reverse repo", "SDF · operative floor", "Policy repo", "MSF · upper bound"],
+            "Rate": [3.35, 5.00, 5.25, 5.50],
+            "Role": ["Legacy published rate", "RBI absorbs bank liquidity", "RBI lends under policy framework", "Emergency overnight borrowing"],
+        })
+        corridor_chart = alt.Chart(corridor).mark_bar(cornerRadiusEnd=7).encode(
+            x=alt.X("Rate:Q", title="Rate, %", scale=alt.Scale(domain=[3, 5.75])),
+            y=alt.Y("Facility:N", title=None, sort=["MSF · upper bound", "Policy repo", "SDF · operative floor", "Fixed reverse repo"]),
+            color=alt.Color("Facility:N", scale=alt.Scale(range=["#EF6A4C", "#2D756C", "#7B61A8", "#C49A45"]), legend=None),
+            tooltip=["Facility:N", alt.Tooltip("Rate:Q", format=".2f"), "Role:N"],
+        ).properties(height=250)
+        labels_chart = alt.Chart(corridor).mark_text(align="left", dx=5, color="#18332F", fontWeight="bold").encode(
+            x="Rate:Q", y=alt.Y("Facility:N", sort=["MSF · upper bound", "Policy repo", "SDF · operative floor", "Fixed reverse repo"]), text=alt.Text("Rate:Q", format=".2f")
+        )
+        st.altair_chart((corridor_chart + labels_chart).configure_view(strokeWidth=0), use_container_width=True)
+        st.caption("Illustrative corridor using July 2026 rates. SDF is the relevant floor; the fixed reverse repo is shown to prevent the two concepts being confused.")
+
+    with reading_tab:
+        st.markdown("#### From observation to inference")
+        st.markdown(
+            """
+            1. **Check the definition.** Confirm whether the series measures a rate, index, rupee value or number of units.
+            2. **Check freshness.** Do not assume that all indicators refer to the same month.
+            3. **Compare like with like.** Use year-on-year changes for seasonal series or index each series when comparing direction.
+            4. **Look for confirmation.** A demand conclusion is stronger when confidence, GST and discretionary sales point in a similar direction.
+            5. **Consider transmission lags.** Repo-rate changes can take months to affect deposit rates, loan pricing and purchases.
+            6. **Separate association from causation.** Correlation alone cannot establish that one indicator caused another to move.
+            """
+        )
+        st.markdown('<div class="callout"><b>Example:</b> Lower repo rates plus stronger vehicle sales are consistent with improving credit-sensitive demand. They do not prove the rate cut caused the sales increase; income, launches, discounts and festival timing may also matter.</div>', unsafe_allow_html=True)
+        st.markdown("#### Common interpretation traps")
+        st.markdown(
+            """
+            - Lower inflation is not the same as lower prices; it usually means slower price increases.
+            - Higher GST does not automatically mean higher real consumption because GST is measured in current rupees.
+            - FEI above 100 does not mean current conditions are strong; CSI may still be below 100.
+            - Wholesale vehicle dispatches can rise because dealers build inventory, even before consumers register those vehicles.
+            - Fixed reverse repo should not be used as the current corridor floor; use SDF after April 2022.
+            """
+        )
+
+    with check_tab:
+        st.markdown("#### Test your understanding")
+        q1 = st.radio("1. If CPI inflation falls from 6% to 4%, what does it usually mean?", ["Prices fell by 2%", "Prices rose more slowly", "All household costs fell"], index=None)
+        if q1:
+            st.success("Correct — inflation slowed, but the price level can still be rising.") if q1 == "Prices rose more slowly" else st.error("Not quite. A lower positive inflation rate means prices are generally still rising, but more slowly.")
+
+        q2 = st.radio("2. Which rate is the effective floor of RBI's liquidity corridor?", ["Fixed reverse repo", "Standing Deposit Facility", "Policy repo"], index=None)
+        if q2:
+            st.success("Correct — SDF has been the operative floor since April 2022.") if q2 == "Standing Deposit Facility" else st.error("Review the corridor concept: SDF, not fixed reverse repo, is the operative floor.")
+
+        q3 = st.radio("3. Can a positive correlation prove that repo-rate cuts increased vehicle sales?", ["Yes", "No"], index=None)
+        if q3:
+            st.success("Correct — correlation is descriptive and does not establish causality.") if q3 == "No" else st.error("No. Timing, income, financing transmission, seasonality and other factors must be examined.")
+
+        q4 = st.radio("4. Which consumer-confidence reading signals optimism?", ["CSI or FEI above 100", "Any reading above zero", "Only a rising GST value"], index=None)
+        if q4:
+            st.success("Correct — 100 is the neutral point for CSI and FEI.") if q4 == "CSI or FEI above 100" else st.error("Consumer-confidence indices use 100 as the neutral threshold.")
+
+elif page == "Pulse":
     latest_i, latest_c, latest_g, latest_v, latest_r = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1], d["rates"].iloc[-1]
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Headline inflation", f"{latest_i.cpi_inflation_yoy:.2f}%", f"{mom_delta(infl, 'cpi_inflation_yoy'):+.2f} pp", help="All-India Combined CPI, year on year")
