@@ -18,6 +18,10 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+Python 3.11–3.14 is supported. The Altair 6 requirement is intentional: older
+Altair 5 builds can fail during import on Python 3.14 because of the newer
+`TypedDict` implementation.
+
 The application does not require network access at runtime. Data are frozen official-source snapshots; see `data/source_catalog.csv` and the in-app **Data desk**.
 
 ## Data policy
