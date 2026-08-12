@@ -166,16 +166,18 @@ if page == "Concepts & checks":
             "Rate": [3.35, 5.00, 5.25, 5.50],
             "Role": ["Legacy published rate", "RBI absorbs bank liquidity", "RBI lends under policy framework", "Emergency overnight borrowing"],
         })
-        corridor_chart = alt.Chart(corridor).mark_bar(cornerRadiusEnd=7).encode(
-            x=alt.X("Rate:Q", title="Rate, %", scale=alt.Scale(domain=[3, 5.75])),
-            y=alt.Y("Facility:N", title=None, sort=["MSF · upper bound", "Policy repo", "SDF · operative floor", "Fixed reverse repo"]),
+        corridor_order = ["MSF · upper bound", "Policy repo", "SDF · operative floor", "Fixed reverse repo"]
+        corridor_chart = alt.Chart(corridor).mark_bar(cornerRadiusEnd=7, size=30).encode(
+            x=alt.X("Rate:Q", title="Rate, %", scale=alt.Scale(domain=[0, 6], nice=False), axis=alt.Axis(tickCount=7)),
+            y=alt.Y("Facility:N", title=None, sort=corridor_order, axis=alt.Axis(labelLimit=210, labelPadding=10)),
             color=alt.Color("Facility:N", scale=alt.Scale(range=["#EF6A4C", "#2D756C", "#7B61A8", "#C49A45"]), legend=None),
             tooltip=["Facility:N", alt.Tooltip("Rate:Q", format=".2f"), "Role:N"],
         ).properties(height=250)
         labels_chart = alt.Chart(corridor).mark_text(align="left", dx=5, color="#18332F", fontWeight="bold").encode(
-            x="Rate:Q", y=alt.Y("Facility:N", sort=["MSF · upper bound", "Policy repo", "SDF · operative floor", "Fixed reverse repo"]), text=alt.Text("Rate:Q", format=".2f")
+            x=alt.X("Rate:Q", scale=alt.Scale(domain=[0, 6], nice=False)), y=alt.Y("Facility:N", sort=corridor_order), text=alt.Text("Rate:Q", format=".2f")
         )
-        st.altair_chart((corridor_chart + labels_chart).configure_view(strokeWidth=0), use_container_width=True)
+        corridor_layer = (corridor_chart + labels_chart).properties(padding={"left": 10, "right": 45, "top": 10, "bottom": 5})
+        st.altair_chart(corridor_layer.configure_view(strokeWidth=0).configure_axis(gridColor="#DED8CE", labelColor="#53645E"), use_container_width=True)
         st.caption("Illustrative corridor using July 2026 rates. SDF is the relevant floor; the fixed reverse repo is shown to prevent the two concepts being confused.")
 
     with reading_tab:
