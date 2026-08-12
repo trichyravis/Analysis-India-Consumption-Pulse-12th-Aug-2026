@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import altair as alt
@@ -15,10 +14,14 @@ st.markdown(
     """
     <style>
       .stApp { background: #F6F2EA; }
-      .block-container { max-width: 1280px; padding-top: 2.2rem; }
+      .block-container { max-width: 1280px; padding-top: 4.75rem; }
       [data-testid="stSidebar"] { background: #18332F; }
       [data-testid="stSidebar"] * { color: #F6F2EA !important; }
       .eyebrow { letter-spacing:.14em; text-transform:uppercase; color:#C8583E; font-size:.72rem; font-weight:700; }
+      .academy-banner { display:flex; align-items:center; gap:.9rem; background:linear-gradient(110deg,#18332F,#28534C); color:#FFFDF8; padding:.9rem 1.15rem; border-radius:15px; margin:0 0 1.35rem; border-bottom:4px solid #EF6A4C; box-shadow:0 8px 24px rgba(24,51,47,.12); }
+      .academy-mark { color:#F5B39F; font-size:1.55rem; line-height:1; }
+      .academy-name { color:#FFFDF8; font-size:1.08rem; font-weight:780; letter-spacing:.01em; }
+      .academy-tagline { color:#CBD8D2; font-size:.8rem; margin-top:.12rem; }
       .hero { font-size:3rem; line-height:1.02; letter-spacing:-.045em; color:#18332F; font-weight:750; margin:.35rem 0 .6rem; }
       .subhero { color:#53645E; max-width:780px; font-size:1.04rem; margin-bottom:1.2rem; }
       .pill { display:inline-block; padding:.28rem .65rem; border:1px solid #B7B0A4; border-radius:999px; color:#53645E; font-size:.78rem; margin:.1rem .25rem .1rem 0; }
@@ -43,6 +46,7 @@ st.markdown(
       .insight-card li { margin-bottom:.42rem; }
       .signal-label { color:#C8583E; font-weight:750; text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; }
       footer { visibility:hidden; }
+      @media(max-width:700px) { .block-container { padding-top:4.25rem; } .hero { font-size:2.15rem; } .academy-banner { align-items:flex-start; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -87,7 +91,7 @@ def line_chart(frame, x, y, color="#2D756C", height=310, domain=None, rule=None)
 with st.sidebar:
     st.markdown("### India Consumption Pulse")
     st.caption("A compact macro demand monitor")
-    page = st.radio("Navigate", ["Pulse", "Deep dive", "Relationships", "Data desk", "About & insights"], label_visibility="collapsed")
+    page = st.radio("Navigate", ["About & insights", "Pulse", "Deep dive", "Relationships", "Data desk"], label_visibility="collapsed")
     st.markdown("---")
     start = st.date_input("Start period", pd.Timestamp("2024-07-01"), min_value=pd.Timestamp("2024-01-01"), max_value=pd.Timestamp("2026-07-31"))
     show_notes = st.toggle("Show methodology notes", value=True)
@@ -115,6 +119,10 @@ conf = d["confidence"].query("date >= @start_ts")
 gst = d["gst"].query("date >= @start_ts")
 veh = d["vehicles"].query("date >= @start_ts")
 
+st.markdown(
+    """<div class="academy-banner"><div class="academy-mark">▲</div><div><div class="academy-name">The Mountain Path Academy</div><div class="academy-tagline">Finance · Risk Management · Quantitative Analytics</div></div></div>""",
+    unsafe_allow_html=True,
+)
 st.markdown('<div class="eyebrow">India · household demand monitor</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero">Consumption, beneath the headline.</div>', unsafe_allow_html=True)
 st.markdown('<div class="subhero">Four signals—prices, sentiment, tax receipts and automobile demand—read together, with their publication gaps kept visible.</div>', unsafe_allow_html=True)
@@ -149,7 +157,7 @@ if page == "Pulse":
         st.markdown('<div class="callout"><b>Read with care.</b> GST and vehicle sales are nominal/activity measures and are seasonal. Consumer confidence is bi-monthly. Indexed lines are descriptive; they do not establish causality.</div>', unsafe_allow_html=True)
 
 elif page == "Deep dive":
-    topic = st.segmented_control("Indicator", ["Inflation", "Confidence", "GST", "Vehicles"], default="Inflation")
+    topic = st.radio("Indicator", ["Inflation", "Confidence", "GST", "Vehicles"], horizontal=True)
     if topic == "Inflation":
         melted = infl.melt("date", ["cpi_inflation_yoy", "food_inflation_yoy"], var_name="series", value_name="percent")
         melted["series"] = melted.series.map({"cpi_inflation_yoy": "Headline CPI", "food_inflation_yoy": "Food CPI"})
@@ -249,6 +257,48 @@ else:
     st.markdown("#### Comparative analysis — what the latest signals mean")
     latest_i, latest_c, latest_g, latest_v = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1]
     vehicle_yoy = (latest_v.domestic_sales_units / d["vehicles"].loc[d["vehicles"].date == latest_v.date - pd.DateOffset(years=1), "domestic_sales_units"].iloc[0] - 1) * 100
+    st.caption("Comparable direction, not comparable units: each line below starts at 100 in July 2024.")
+    visual_parts = []
+    for frame, col, label in [
+        (d["inflation"], "cpi_inflation_yoy", "Inflation"),
+        (d["confidence"], "csi", "Confidence"),
+        (d["gst"], "gross_gst_crore", "GST"),
+        (d["vehicles"], "domestic_sales_units", "Vehicles"),
+    ]:
+        temp = frame.loc[frame.date >= pd.Timestamp("2024-07-01"), ["date", col]].dropna().copy()
+        temp["Indexed value"] = temp[col] / temp[col].iloc[0] * 100
+        temp["Signal"] = label
+        visual_parts.append(temp[["date", "Indexed value", "Signal"]])
+    visual_df = pd.concat(visual_parts)
+    comparison_chart = alt.Chart(visual_df).mark_line(point=alt.OverlayMarkDef(size=42), strokeWidth=2.8).encode(
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%b %y", labelAngle=0, tickCount=7)),
+        y=alt.Y("Indexed value:Q", title="Index · Jul 2024 = 100", scale=alt.Scale(zero=False)),
+        color=alt.Color("Signal:N", scale=alt.Scale(domain=list(COLORS), range=list(COLORS.values())), title=None),
+        tooltip=[alt.Tooltip("date:T", title="Period", format="%B %Y"), "Signal:N", alt.Tooltip("Indexed value:Q", format=".1f")],
+    ).properties(height=330)
+    st.altair_chart(comparison_chart.configure_view(strokeWidth=0).configure_axis(gridColor="#DED8CE"), use_container_width=True)
+
+    left_chart, right_chart = st.columns(2)
+    confidence_long = d["confidence"].melt("date", ["csi", "fei"], var_name="Measure", value_name="Index")
+    confidence_long["Measure"] = confidence_long.Measure.map({"csi": "Current situation", "fei": "Future expectations"})
+    confidence_chart = alt.Chart(confidence_long).mark_line(point=True, strokeWidth=2.5).encode(
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%b %y", labelAngle=0)),
+        y=alt.Y("Index:Q", scale=alt.Scale(domain=[85, 130])),
+        color=alt.Color("Measure:N", scale=alt.Scale(range=["#2D756C", "#C49A45"]), title=None),
+        tooltip=[alt.Tooltip("date:T", format="%b %Y"), "Measure:N", alt.Tooltip("Index:Q", format=".1f")],
+    ).properties(title="Confidence: present vs future", height=245)
+    neutral = alt.Chart(pd.DataFrame({"Index": [100]})).mark_rule(color="#8C8176", strokeDash=[5, 5]).encode(y="Index:Q")
+    left_chart.altair_chart((confidence_chart + neutral).configure_view(strokeWidth=0), use_container_width=True)
+
+    price_long = d["inflation"].melt("date", ["cpi_inflation_yoy", "food_inflation_yoy"], var_name="Measure", value_name="Percent")
+    price_long["Measure"] = price_long.Measure.map({"cpi_inflation_yoy": "Headline CPI", "food_inflation_yoy": "Food CPI"})
+    price_chart = alt.Chart(price_long).mark_area(opacity=.22, line={"strokeWidth":2.4}, point=alt.OverlayMarkDef(size=26)).encode(
+        x=alt.X("date:T", title=None, axis=alt.Axis(format="%b %y", labelAngle=0)),
+        y=alt.Y("Percent:Q", title="Year-on-year, %"),
+        color=alt.Color("Measure:N", scale=alt.Scale(range=["#EF6A4C", "#C49A45"]), title=None),
+        tooltip=[alt.Tooltip("date:T", format="%b %Y"), "Measure:N", alt.Tooltip("Percent:Q", format=".2f")],
+    ).properties(title="Inflation: headline vs food", height=245)
+    right_chart.altair_chart(price_chart.configure_view(strokeWidth=0), use_container_width=True)
     st.markdown(
         f"""
         - **Inflation has re-accelerated:** headline CPI rose to **{latest_i.cpi_inflation_yoy:.2f}% in {latest_i.date:%B %Y}**, with food inflation at **{latest_i.food_inflation_yoy:.2f}%**. This suggests renewed pressure on household budgets, especially for lower-income consumers.
