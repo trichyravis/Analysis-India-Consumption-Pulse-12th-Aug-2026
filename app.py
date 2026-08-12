@@ -36,6 +36,11 @@ st.markdown(
       .profile-footer strong { color:#FFFDF8; }
       .profile-footer a { color:#F5B39F!important; font-weight:700; text-decoration:none; }
       .profile-footer small { color:#BFC9C4; }
+      .insight-card { background:#FFFDF8; border:1px solid #DDD5C8; border-radius:14px; padding:1.05rem 1.15rem; min-height:175px; box-shadow:0 6px 20px rgba(24,51,47,.04); }
+      .insight-card h4 { color:#18332F; margin:0 0 .55rem; font-size:1.02rem; }
+      .insight-card ul { color:#53645E; padding-left:1.15rem; margin-bottom:0; }
+      .insight-card li { margin-bottom:.42rem; }
+      .signal-label { color:#C8583E; font-weight:750; text-transform:uppercase; letter-spacing:.08em; font-size:.72rem; }
       footer { visibility:hidden; }
     </style>
     """,
@@ -81,7 +86,7 @@ def line_chart(frame, x, y, color="#2D756C", height=310, domain=None, rule=None)
 with st.sidebar:
     st.markdown("### India Consumption Pulse")
     st.caption("A compact macro demand monitor")
-    page = st.radio("Navigate", ["Pulse", "Deep dive", "Relationships", "Data desk"], label_visibility="collapsed")
+    page = st.radio("Navigate", ["Pulse", "Deep dive", "Relationships", "Data desk", "About & insights"], label_visibility="collapsed")
     st.markdown("---")
     start = st.date_input("Start period", pd.Timestamp("2024-07-01"), min_value=pd.Timestamp("2024-01-01"), max_value=pd.Timestamp("2026-07-31"))
     show_notes = st.toggle("Show methodology notes", value=True)
@@ -115,7 +120,7 @@ st.markdown('<div class="subhero">Four signals—prices, sentiment, tax receipts
 st.markdown('<span class="pill">Official-source snapshot</span><span class="pill">Monthly + bi-monthly</span><span class="pill">Latest available ≠ July 2026</span>', unsafe_allow_html=True)
 
 if page == "Pulse":
-    latest_i, latest_c, latest_g, latest_v = infl.iloc[-1], conf.iloc[-1], gst.iloc[-1], veh.iloc[-1]
+    latest_i, latest_c, latest_g, latest_v = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1]
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Headline inflation", f"{latest_i.cpi_inflation_yoy:.2f}%", f"{mom_delta(infl, 'cpi_inflation_yoy'):+.2f} pp", help="All-India Combined CPI, year on year")
     c2.metric("Urban confidence", f"{latest_c.csi:.1f}", f"{mom_delta(conf, 'csi'):+.1f} pts", help="CSI; below 100 denotes pessimism")
@@ -177,7 +182,7 @@ elif page == "Relationships":
     st.altair_chart((heat + text_layer).configure_view(strokeWidth=0), use_container_width=True)
     st.markdown('<div class="callout warn"><b>Not a causal model.</b> The window is short, seasonal effects remain, and releases have different frequencies. Treat coefficients as prompts for investigation.</div>', unsafe_allow_html=True)
 
-else:
+elif page == "Data desk":
     st.markdown('<div class="section-title">Availability before analysis</div>', unsafe_allow_html=True)
     catalog = d["catalog"].copy()
     catalog["latest_period"] = catalog.latest_period.dt.strftime("%b %Y")
@@ -206,6 +211,72 @@ else:
             use_container_width=True,
         )
     st.markdown('<div class="callout warn"><b>July 2026 is not backfilled.</b> As of the snapshot date, no series in this project had a complete, clean official July observation available for inclusion. The dashboard stops each indicator at its latest sourced period.</div>', unsafe_allow_html=True)
+
+else:
+    st.markdown('<div class="section-title">About this project</div>', unsafe_allow_html=True)
+    st.write(
+        "India Consumption Pulse is an educational macro-demand dashboard. It brings together four public indicators "
+        "that describe different parts of the household-consumption cycle: the prices consumers face, how households "
+        "feel, tax receipts associated with formal economic activity, and demand for a major discretionary purchase."
+    )
+    st.markdown(
+        '<div class="callout"><b>Core question:</b> Are household demand conditions strengthening, weakening, or becoming more uneven—and do prices, confidence and observed spending signals tell a consistent story?</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("#### What each indicator contributes")
+    a, b = st.columns(2)
+    with a:
+        st.markdown(
+            """<div class="insight-card"><h4>Prices and confidence</h4><ul>
+            <li><b>CPI inflation</b> measures the speed of consumer-price change, not the absolute cost of living.</li>
+            <li><b>Food inflation</b> matters disproportionately because it can compress household discretionary budgets.</li>
+            <li><b>CSI</b> captures perceptions of current conditions; <b>FEI</b> captures expectations one year ahead.</li>
+            </ul></div>""",
+            unsafe_allow_html=True,
+        )
+    with b:
+        st.markdown(
+            """<div class="insight-card"><h4>Activity and discretionary demand</h4><ul>
+            <li><b>Gross GST</b> is a high-frequency formal-economy activity signal, but is nominal and seasonal.</li>
+            <li><b>Passenger-vehicle sales</b> proxy large discretionary purchases and financing-sensitive demand.</li>
+            <li>SIAM figures are wholesale dispatches; they need not equal final retail registrations in the same month.</li>
+            </ul></div>""",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("#### Comparative analysis — what the latest signals mean")
+    latest_i, latest_c, latest_g, latest_v = d["inflation"].iloc[-1], d["confidence"].iloc[-1], d["gst"].iloc[-1], d["vehicles"].iloc[-1]
+    vehicle_yoy = (latest_v.domestic_sales_units / d["vehicles"].loc[d["vehicles"].date == latest_v.date - pd.DateOffset(years=1), "domestic_sales_units"].iloc[0] - 1) * 100
+    st.markdown(
+        f"""
+        - **Inflation has re-accelerated:** headline CPI rose to **{latest_i.cpi_inflation_yoy:.2f}% in {latest_i.date:%B %Y}**, with food inflation at **{latest_i.food_inflation_yoy:.2f}%**. This suggests renewed pressure on household budgets, especially for lower-income consumers.
+
+        - **Present confidence remains cautious:** the urban CSI was **{latest_c.csi:.1f} in {latest_c.date:%B %Y}**, below the neutral level of 100. Households therefore remained pessimistic about current conditions at that survey round.
+
+        - **Expectations are better than present perceptions:** FEI was **{latest_c.fei:.1f}**, comfortably above 100. The **{latest_c.fei-latest_c.csi:.1f}-point** CSI–FEI gap indicates optimism about the year ahead despite dissatisfaction with current conditions.
+
+        - **Formal activity remains large:** gross GST was **₹{latest_g.gross_gst_crore/100000:.2f} lakh crore in {latest_g.date:%B %Y}**. Read this as a broad nominal activity signal—not a pure measure of real household consumption—because inflation, imports, compliance and timing also affect collections.
+
+        - **Vehicle demand is comparatively strong:** passenger-vehicle wholesale sales reached **{latest_v.domestic_sales_units/100000:.2f} lakh units in {latest_v.date:%B %Y}**, approximately **{vehicle_yoy:.1f}% higher** than the same month a year earlier. This points to resilience in a financing-sensitive discretionary category.
+
+        - **Combined inference:** the indicators describe an **uneven but resilient consumption environment**. Current household sentiment is subdued and food-price pressure has returned, yet forward expectations and passenger-vehicle demand are stronger than the confidence reading alone would imply.
+
+        - **Possible interpretation:** spending may be stronger among households able to access credit or absorb higher prices, while budget-sensitive households remain cautious. This is an inference, not something these aggregate series can prove directly.
+        """
+    )
+
+    st.markdown("#### How to use the analysis responsibly")
+    st.markdown(
+        """
+        - Compare direction and turning points rather than expecting all series to move in the same month.
+        - Check each series' latest period before comparing readings; release schedules differ.
+        - Treat GST and vehicle sales for seasonality, festival timing, year-end effects and policy changes.
+        - Use correlations as exploratory evidence only. A short shared trend does not establish causation.
+        - Supplement this dashboard with rural confidence, retail registrations, real consumption expenditure and income data before making investment or policy decisions.
+        """
+    )
+    st.markdown('<div class="callout warn"><b>Scope:</b> This is an educational analytical tool, not an economic forecast or investment recommendation. The Data desk records every coverage limitation and official source.</div>', unsafe_allow_html=True)
 
 st.markdown(
     """
