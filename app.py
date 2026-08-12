@@ -26,6 +26,16 @@ st.markdown(
       .section-title { color:#18332F; font-size:1.5rem; font-weight:700; letter-spacing:-.025em; margin-top:1rem; }
       .callout { background:#E8EFEA; border-left:4px solid #2D756C; padding:1rem 1.1rem; border-radius:0 10px 10px 0; color:#26443F; }
       .warn { background:#F7E7D7; border-left-color:#EF6A4C; }
+      .profile-card { margin-top:.65rem; padding:1rem; border:1px solid rgba(246,242,234,.22); border-radius:14px; background:rgba(255,255,255,.07); }
+      .profile-name { color:#F5B39F!important; font-size:1rem; font-weight:750; margin-bottom:.25rem; }
+      .profile-role { color:#E7E1D7!important; font-size:.78rem; line-height:1.5; }
+      .profile-links { margin-top:.7rem; line-height:1.7; }
+      .profile-links a { color:#F5B39F!important; font-size:.78rem; font-weight:700; text-decoration:none; }
+      .profile-links a:hover { text-decoration:underline; }
+      .profile-footer { background:#18332F; color:#EDE7DC; padding:1.35rem 1.5rem; border-radius:16px; margin-top:2.5rem; text-align:center; border-top:4px solid #EF6A4C; line-height:1.55; }
+      .profile-footer strong { color:#FFFDF8; }
+      .profile-footer a { color:#F5B39F!important; font-weight:700; text-decoration:none; }
+      .profile-footer small { color:#BFC9C4; }
       footer { visibility:hidden; }
     </style>
     """,
@@ -77,6 +87,21 @@ with st.sidebar:
     show_notes = st.toggle("Show methodology notes", value=True)
     st.markdown("---")
     st.caption("Snapshot prepared 12 Aug 2026 · Official release dates differ by series.")
+    st.markdown(
+        """
+        <div class="profile-card">
+          <div class="profile-name">Prof. V. Ravichandran</div>
+          <div class="profile-role">Faculty · Finance, Risk &amp; Quantitative Analytics<br>28+ years in corporate finance and banking · 10+ years in academia</div>
+          <div class="profile-links">
+            <a href="https://www.linkedin.com/in/trichyravis" target="_blank">LinkedIn ↗</a> &nbsp;·&nbsp;
+            <a href="https://github.com/trichyravis" target="_blank">GitHub ↗</a><br>
+            <a href="https://themountainpathacademy.com/about.html" target="_blank">Full faculty profile ↗</a><br>
+            <a href="https://themountainpathacademy.com/courses" target="_blank">Mountain Path Academy courses ↗</a>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 start_ts = pd.Timestamp(start)
 infl = d["inflation"].query("date >= @start_ts")
@@ -165,7 +190,35 @@ else:
             st.link_button("Open official source", row.source_url)
     st.markdown("#### Download clean snapshots")
     cols = st.columns(4)
-    for col, (key, label) in zip(cols, [("inflation","Inflation"),("confidence","Confidence"),("gst","GST"),("vehicles","Vehicles")]):
-        col.download_button(label, d[key].to_csv(index=False).encode(), file_name=f"india_{key}.csv", mime="text/csv", use_container_width=True)
+    exports = [
+        ("india_inflation.xlsx", "Inflation"),
+        ("india_consumer_confidence.xlsx", "Confidence"),
+        ("india_gst_collections.xlsx", "GST"),
+        ("india_passenger_vehicle_sales.xlsx", "Vehicles"),
+    ]
+    for col, (file_name, label) in zip(cols, exports):
+        workbook_bytes = (DATA / "excel" / file_name).read_bytes()
+        col.download_button(
+            label,
+            workbook_bytes,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
     st.markdown('<div class="callout warn"><b>July 2026 is not backfilled.</b> As of the snapshot date, no series in this project had a complete, clean official July observation available for inclusion. The dashboard stops each indicator at its latest sourced period.</div>', unsafe_allow_html=True)
 
+st.markdown(
+    """
+    <div class="profile-footer">
+      <strong>Prof. V. Ravichandran · The Mountain Path Academy</strong><br>
+      Visiting Faculty — NMIMS Bangalore · BITS Pilani (WILP) · RV University Bangalore · Goa Institute of Management<br>
+      Finance, Risk Management &amp; Quantitative Analytics<br><br>
+      <a href="https://www.linkedin.com/in/trichyravis" target="_blank">LinkedIn</a> &nbsp;·&nbsp;
+      <a href="https://github.com/trichyravis" target="_blank">GitHub</a> &nbsp;·&nbsp;
+      <a href="https://themountainpathacademy.com/about.html" target="_blank">Faculty profile</a> &nbsp;·&nbsp;
+      <a href="https://themountainpathacademy.com/contact" target="_blank">Contact</a><br><br>
+      <small>India Consumption Pulse · Educational analysis · Source limitations are documented in the Data desk</small>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)

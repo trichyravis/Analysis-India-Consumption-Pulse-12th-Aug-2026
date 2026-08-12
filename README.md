@@ -6,7 +6,7 @@ A polished Streamlit dashboard for exploring India's inflation, urban consumer c
 
 - A source and availability audit before analysis
 - Clean, bundled CSV snapshots with consistent monthly dates
-- Interactive KPI cards, indexed trend comparison, correlations, and downloadable filtered data
+- Interactive KPI cards, indexed trend comparison, correlations, and downloadable Excel workbooks
 - Explicit coverage and methodology notes (including the 2026 CPI base change and SIAM coverage caveats)
 
 ## Run locally
@@ -22,7 +22,7 @@ Python 3.11–3.14 is supported. The Altair 6 requirement is intentional: older
 Altair 5 builds can fail during import on Python 3.14 because of the newer
 `TypedDict` implementation.
 
-The application does not require network access at runtime. Data are frozen official-source snapshots; see `data/source_catalog.csv` and the in-app **Data desk**.
+The application does not require network access at runtime. Data are frozen official-source snapshots; see `data/source_catalog.csv` and the in-app **Data desk**. User downloads are genuine `.xlsx` workbooks with typed dates/numbers and a dedicated source-notes sheet.
 
 ## Data policy
 
