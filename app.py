@@ -17,6 +17,17 @@ st.markdown(
       .block-container { max-width: 1280px; padding-top: 4.75rem; }
       [data-testid="stSidebar"] { background: #18332F; }
       [data-testid="stSidebar"] * { color: #F6F2EA !important; }
+      section[data-testid="stSidebar"] [data-testid="stDateInput"] input,
+      section[data-testid="stSidebar"] [data-testid="stDateInput"] input::selection {
+        color:#18332F !important;
+        -webkit-text-fill-color:#18332F !important;
+        caret-color:#18332F !important;
+        font-weight:650 !important;
+        opacity:1 !important;
+      }
+      section[data-testid="stSidebar"] [data-testid="stDateInput"] div[data-baseweb="input"] {
+        background:#FFFDF8 !important;
+      }
       .eyebrow { letter-spacing:.14em; text-transform:uppercase; color:#C8583E; font-size:.72rem; font-weight:700; }
       .academy-banner { display:flex; align-items:center; gap:.9rem; background:linear-gradient(110deg,#18332F,#28534C); color:#FFFDF8; padding:.9rem 1.15rem; border-radius:15px; margin:0 0 1.35rem; border-bottom:4px solid #EF6A4C; box-shadow:0 8px 24px rgba(24,51,47,.12); }
       .academy-mark { color:#F5B39F; font-size:1.55rem; line-height:1; }
@@ -333,7 +344,7 @@ st.markdown(
     """
     <div class="profile-footer">
       <strong>Prof. V. Ravichandran · The Mountain Path Academy</strong><br>
-      Visiting Faculty — NMIMS Bangalore · BITS Pilani (WILP) · RV University Bangalore · Goa Institute of Management<br>
+      Visiting Faculty at Leading Business Schools<br>
       Finance, Risk Management &amp; Quantitative Analytics<br><br>
       <a href="https://www.linkedin.com/in/trichyravis" target="_blank">LinkedIn</a> &nbsp;·&nbsp;
       <a href="https://github.com/trichyravis" target="_blank">GitHub</a> &nbsp;·&nbsp;
