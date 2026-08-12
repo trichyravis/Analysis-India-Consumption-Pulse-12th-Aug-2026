@@ -149,16 +149,42 @@ if page == "Concepts & checks":
     with concept_tab:
         st.markdown("#### The five building blocks")
         cards = [
-            ("CPI inflation", "The percentage change in the consumer-price index from a year earlier. Falling inflation means prices are rising more slowly—not necessarily falling."),
-            ("Consumer confidence", "CSI describes how urban households view current conditions; FEI captures expectations one year ahead. A value of 100 is neutral."),
-            ("GST collections", "A nominal, high-frequency signal of formal taxable activity. Inflation, imports, compliance and calendar effects also influence it."),
-            ("Passenger vehicles", "A financing-sensitive discretionary-demand indicator. SIAM reports wholesale dispatches, which can differ from retail registrations."),
-            ("RBI policy rates", "Repo influences borrowing conditions. SDF absorbs banks' surplus liquidity and forms the operative floor; fixed reverse repo remains published but is not the current floor."),
+            ("CPI inflation", "<b>What it is:</b> the annual rate at which a representative basket of household goods and services becomes costlier.<br><br><b>When it rises:</b> purchasing power is squeezed, particularly when food inflation rises.<br><b>When it falls:</b> prices usually still rise, but more slowly. A negative rate is needed for broad price decline.<br><b>Watch:</b> headline CPI is an average; a household's experience depends on its own spending mix."),
+            ("Consumer confidence", "<b>What it is:</b> RBI survey evidence on household perceptions of the economy, jobs, prices, income and spending.<br><br><b>CSI:</b> views of present conditions versus one year ago.<br><b>FEI:</b> expectations one year ahead.<br><b>How to read:</b> 100 is neutral; above 100 is optimism and below 100 is pessimism.<br><b>Watch:</b> this dashboard uses the urban survey."),
+            ("GST collections", "<b>What it is:</b> tax collected on formal sales of most goods and services, including domestic activity and imports.<br><br><b>When it rises:</b> taxable activity may be expanding, prices may be higher, compliance may have improved—or several may occur together.<br><b>Gross vs net:</b> net GST subtracts refunds.<br><b>Watch:</b> GST is nominal and seasonal, not a direct measure of real consumption."),
+            ("Passenger vehicles", "<b>What it is:</b> a signal of big-ticket discretionary demand that is sensitive to income, confidence and loan affordability.<br><br><b>Wholesale:</b> vehicles dispatched by manufacturers to dealers.<br><b>Retail:</b> vehicles registered or sold to final customers.<br><b>Watch:</b> dealer inventory, festivals, launches and discounts can move wholesale sales before final demand."),
+            ("RBI policy rates", "<b>What they do:</b> RBI uses rates and reserve requirements to influence liquidity, bank funding costs, credit, demand and inflation.<br><br><b>Easing:</b> lower repo or reserve requirements generally supports cheaper/more available credit with a lag.<br><b>Tightening:</b> higher settings restrain borrowing and demand.<br><b>Watch:</b> banks do not transmit every policy change immediately or equally to all borrowers."),
         ]
         for row in range(0, len(cards), 2):
             cols = st.columns(2)
             for col, (title, body) in zip(cols, cards[row:row+2]):
                 col.markdown(f'<div class="insight-card"><h4>{title}</h4><p>{body}</p></div>', unsafe_allow_html=True)
+
+        st.markdown("#### RBI rates and ratios — explained for everyone")
+        rate_explainers = [
+            ("Policy repo rate", "Banks borrow short-term funds from RBI against eligible securities.", "RBI → bank", "Lower repo can eventually reduce floating-loan and business borrowing costs; higher repo generally makes credit costlier."),
+            ("Standing Deposit Facility · SDF", "Banks park surplus overnight money with RBI without giving RBI collateral.", "Bank → RBI", "It is the operative lower floor of the policy corridor. A higher SDF makes parking surplus with RBI more attractive."),
+            ("Fixed reverse repo · FRRR", "RBI borrows surplus money from banks at a fixed rate, normally against securities.", "Bank → RBI", "It remains published at 3.35%, but SDF replaced it as the effective corridor floor in April 2022."),
+            ("Marginal Standing Facility · MSF", "Banks obtain emergency overnight funds from RBI by using eligible government securities.", "RBI → bank", "It is normally above repo and forms the corridor ceiling. Heavy use can indicate short-term liquidity stress."),
+            ("Bank rate", "A reference rate for certain longer-term RBI lending and statutory penalty calculations.", "RBI → bank", "It is usually aligned with MSF. It is not the interest rate offered directly to households."),
+            ("Cash Reserve Ratio · CRR", "The share of deposits banks must keep as cash with RBI; banks generally earn no interest on it.", "Bank reserves", "A lower CRR releases funds that banks can potentially lend; a higher CRR absorbs lendable liquidity."),
+            ("Statutory Liquidity Ratio · SLR", "The share of deposits banks must hold in liquid assets such as approved government securities, cash or gold.", "Bank liquid assets", "It supports liquidity and solvency but also limits the share of deposits freely available for other lending."),
+        ]
+        for row in range(0, len(rate_explainers), 2):
+            cols = st.columns(2)
+            for col, (name, meaning, direction, household) in zip(cols, rate_explainers[row:row+2]):
+                col.markdown(
+                    f"""<div class="insight-card"><h4>{name}</h4>
+                    <p><b>In simple words:</b> {meaning}</p>
+                    <p><b>Direction of funds:</b> {direction}</p>
+                    <p><b>Why it matters:</b> {household}</p></div>""",
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown(
+            '<div class="callout"><b>Easy memory aid:</b> Repo means banks need money from RBI. SDF and reverse repo mean banks have surplus money to park with RBI. MSF is the higher-cost emergency window. CRR and SLR determine how much of bank deposits must remain reserved or liquid.</div>',
+            unsafe_allow_html=True,
+        )
 
         st.markdown("#### RBI policy-rate corridor")
         corridor = pd.DataFrame({
